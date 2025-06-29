@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sticky Notes App</title>
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        /* Header styles */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* Controls section */
+        .controls {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-weight: 600;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        /* Notes container */
+        .notes-container {
+            position: relative;
+            min-height: 70vh;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            margin: 0 auto;
+            max-width: 1200px;
+        }
+
+        /* Individual note styles */
+        .note {
+            position: absolute;
+            width: 250px;
+            min-height: 200px;
+            background: linear-gradient(45deg, #f9ca24, #f0932b);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            cursor: move;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.3);
+            z-index: 1;
+        }
+
+        .note:hover {
+            transform: scale(1.02);
+            box-shadow: 0 12px 35px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+
+        .note:nth-child(3n+1) {
+            background: linear-gradient(45deg, #a8e6cf, #88d8c0);
+        }
+
+        .note:nth-child(3n+2) {
+            background: linear-gradient(45deg, #ff8b94, #ff6b6b);
+        }
+
+        .note:nth-child(3n+3) {
+            background: linear-gradient(45deg, #b8e6b8, #a8e6cf);
+        }
+
+        .note:nth-child(3n+4) {
+            background: linear-gradient(45deg, #ffd3b6, #ffaaa5);
+        }
+
+        .note:nth-child(3n+5) {
+            background: linear-gradient(45deg, #d4a5a5, #c44569);
+        }
+
+        /* Note header */
+        .note-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+            cursor: move;
+            user-select: none;
+        }
+
+        .note-date {
+            font-size: 0.8rem;
+            color: rgba(0,0,0,0.6);
+            font-weight: 500;
+        }
+
+        .delete-btn {
+            background: rgba(255,255,255,0.3);
+            border: none;
+            color: #e74c3c;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .delete-btn:hover {
+            background: #e74c3c;
+            color: white;
+            transform: scale(1.1);
+        }
+
+        /* Note content */
+        .note-content {
+            width: 100%;
+            height: calc(100% - 50px);
+            background: transparent;
+            border: none;
+            outline: none;
+            resize: none;
+            font-family: inherit;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            color: rgba(0,0,0,0.8);
+            cursor: text;
+        }
+
+        .note-content::placeholder {
+            color: rgba(0,0,0,0.5);
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .notes-container {
+                padding: 15px;
+            }
+
+            .note {
+                width: 200px;
+                min-height: 150px;
+            }
+
+            .btn {
+                padding: 10px 20px;
+                font-size: 0.9rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .note {
+                width: 180px;
+                min-height: 120px;
+            }
+        }
+
+        /* Animation for new notes */
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .note.new {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            color: rgba(255,255,255,0.8);
+            padding: 60px 20px;
+            font-size: 1.2rem;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            opacity: 0.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📝 Sticky Notes</h1>
+        <p>Create, organize, and never lose your thoughts again</p>
+    </div>
+
+    <div class="controls">
+        <button class="btn" onclick="createNote()">
+            ✨ Create New Note
+        </button>
+    </div>
+
+    <div class="notes-container" id="notesContainer">
+        <div class="empty-state" id="emptyState">
+            <i>📝</i>
+            <p>No notes yet. Click "Create New Note" to get started!</p>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let notes = [];
+        let nextId = 1;
+        let isDragging = false;
+        let currentNote = null;
+        let dragOffset = { x: 0, y: 0 };
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            loadNotes();
+            setupEventListeners();
+        });
+
+        /**
+         * Load notes from localStorage
+         */
+        function loadNotes() {
+            const savedNotes = localStorage.getItem('stickyNotes');
+            if (savedNotes) {
+                notes = JSON.parse(savedNotes);
+                notes.forEach(note => {
+                    createNoteElement(note);
+                });
+                updateNextId();
+            }
+            updateEmptyState();
+        }
+
+        /**
+         * Save notes to localStorage
+         */
+        function saveNotes() {
+            localStorage.setItem('stickyNotes', JSON.stringify(notes));
+        }
+
+        /**
+         * Update the next available ID for new notes
+         */
+        function updateNextId() {
+            if (notes.length > 0) {
+                nextId = Math.max(...notes.map(note => note.id)) + 1;
+            } else {
+                nextId = 1;
+            }
+        }
+
+        /**
+         * Create a new note
+         */
+        function createNote() {
+            const note = {
+                id: nextId++,
+                content: '',
+                x: Math.random() * (window.innerWidth - 300),
+                y: Math.random() * (window.innerHeight - 250),
+                createdAt: new Date().toISOString()
+            };
+
+            notes.push(note);
+            createNoteElement(note);
+            saveNotes();
+            updateEmptyState();
+        }
+
+        /**
+         * Create a note element and add it to the DOM
+         */
+        function createNoteElement(note) {
+            const noteElement = document.createElement('div');
+            noteElement.className = 'note new';
+            noteElement.id = `note-${note.id}`;
+            noteElement.style.left = `${note.x}px`;
+            noteElement.style.top = `${note.y}px`;
+
+            const date = new Date(note.createdAt).toLocaleDateString();
+
+            noteElement.innerHTML = `
+                <div class="note-header">
+                    <span class="note-date">${date}</span>
+                    <button class="delete-btn" onclick="deleteNote(${note.id})">×</button>
+                </div>
+                <textarea class="note-content" placeholder="Write your note here..." oninput="updateNoteContent(${note.id}, this.value)">${note.content}</textarea>
+            `;
+
+            document.getElementById('notesContainer').appendChild(noteElement);
+
+            // Remove the 'new' class after animation
+            setTimeout(() => {
+                noteElement.classList.remove('new');
+            }, 300);
+
+            // Setup drag functionality
+            setupDragListeners(noteElement, note.id);
+        }
+
+        /**
+         * Update note content and save to localStorage
+         */
+        function updateNoteContent(id, content) {
+            const note = notes.find(n => n.id === id);
+            if (note) {
+                note.content = content;
+                saveNotes();
+            }
+        }
+
+        /**
+         * Delete a note
+         */
+        function deleteNote(id) {
+            const noteElement = document.getElementById(`note-${id}`);
+            if (noteElement) {
+                noteElement.style.transform = 'scale(0)';
+                noteElement.style.opacity = '0';
+                
+                setTimeout(() => {
+                    noteElement.remove();
+                    notes = notes.filter(note => note.id !== id);
+                    saveNotes();
+                    updateEmptyState();
+                }, 200);
+            }
+        }
+
+        /**
+         * Setup drag and drop functionality for a note
+         */
+        function setupDragListeners(noteElement, noteId) {
+            // Only make the header draggable, not the entire note
+            const noteHeader = noteElement.querySelector('.note-header');
+            
+            noteHeader.addEventListener('mousedown', startDrag);
+            noteHeader.addEventListener('touchstart', startDrag, { passive: false });
+
+            function startDrag(e) {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent text selection
+                isDragging = true;
+                currentNote = noteId;
+
+                const rect = noteElement.getBoundingClientRect();
+                const containerRect = document.getElementById('notesContainer').getBoundingClientRect();
+
+                if (e.type === 'mousedown') {
+                    dragOffset.x = e.clientX - rect.left;
+                    dragOffset.y = e.clientY - rect.top;
+                } else if (e.type === 'touchstart') {
+                    dragOffset.x = e.touches[0].clientX - rect.left;
+                    dragOffset.y = e.touches[0].clientY - rect.top;
+                }
+
+                noteElement.style.zIndex = '1000';
+                noteElement.style.cursor = 'grabbing';
+            }
+        }
+
+        /**
+         * Setup global event listeners for dragging
+         */
+        function setupEventListeners() {
+            document.addEventListener('mousemove', handleDrag);
+            document.addEventListener('touchmove', handleDrag, { passive: false });
+            document.addEventListener('mouseup', stopDrag);
+            document.addEventListener('touchend', stopDrag);
+
+            // Prevent default drag behavior on images and other elements
+            document.addEventListener('dragstart', e => e.preventDefault());
+        }
+
+        /**
+         * Handle dragging movement
+         */
+        function handleDrag(e) {
+            if (!isDragging || !currentNote) return;
+
+            e.preventDefault();
+            const noteElement = document.getElementById(`note-${currentNote}`);
+            if (!noteElement) return;
+
+            const containerRect = document.getElementById('notesContainer').getBoundingClientRect();
+            let clientX, clientY;
+
+            if (e.type === 'mousemove') {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            } else if (e.type === 'touchmove') {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            }
+
+            const newX = clientX - containerRect.left - dragOffset.x;
+            const newY = clientY - containerRect.top - dragOffset.y;
+
+            // Constrain to container bounds
+            const maxX = containerRect.width - noteElement.offsetWidth;
+            const maxY = containerRect.height - noteElement.offsetHeight;
+
+            const constrainedX = Math.max(0, Math.min(newX, maxX));
+            const constrainedY = Math.max(0, Math.min(newY, maxY));
+
+            noteElement.style.left = `${constrainedX}px`;
+            noteElement.style.top = `${constrainedY}px`;
+        }
+
+        /**
+         * Stop dragging
+         */
+        function stopDrag() {
+            if (isDragging && currentNote) {
+                const noteElement = document.getElementById(`note-${currentNote}`);
+                if (noteElement) {
+                    noteElement.style.zIndex = '1';
+                    noteElement.style.cursor = 'move';
+
+                    // Update note position in data
+                    const note = notes.find(n => n.id === currentNote);
+                    if (note) {
+                        note.x = parseInt(noteElement.style.left);
+                        note.y = parseInt(noteElement.style.top);
+                        saveNotes();
+                    }
+                }
+            }
+
+            isDragging = false;
+            currentNote = null;
+        }
+
+        /**
+         * Update empty state visibility
+         */
+        function updateEmptyState() {
+            const emptyState = document.getElementById('emptyState');
+            if (notes.length === 0) {
+                emptyState.style.display = 'block';
+            } else {
+                emptyState.style.display = 'none';
+            }
+        }
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + N to create new note
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                e.preventDefault();
+                createNote();
+            }
+        });
+    </script>
+</body>
+</html> 
