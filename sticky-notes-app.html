@@ -92,6 +92,12 @@
             transition: all 0.3s ease;
             border: 1px solid rgba(255,255,255,0.3);
             z-index: 1;
+            resize: none;
+            overflow: hidden;
+        }
+
+        .note.resizable {
+            resize: both;
         }
 
         .note:hover {
@@ -128,14 +134,18 @@
             margin-bottom: 10px;
             padding-bottom: 8px;
             border-bottom: 1px solid rgba(255,255,255,0.3);
-            cursor: move;
-            user-select: none;
         }
 
         .note-date {
             font-size: 0.8rem;
             color: rgba(0,0,0,0.6);
             font-weight: 500;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 5px;
+            align-items: center;
         }
 
         .delete-btn {
@@ -152,12 +162,93 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative;
         }
 
         .delete-btn:hover {
             background: #e74c3c;
             color: white;
             transform: scale(1.1);
+        }
+
+        .delete-btn.holding {
+            background: #e74c3c;
+            color: white;
+        }
+
+        /* Delete progress circle */
+        .delete-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid transparent;
+            border-top: 2px solid white;
+            animation: none;
+            transform: rotate(-90deg);
+        }
+
+        .delete-progress.active {
+            animation: deleteProgress 0.5s linear forwards;
+        }
+
+        @keyframes deleteProgress {
+            from {
+                transform: rotate(-90deg);
+            }
+            to {
+                transform: rotate(270deg);
+            }
+        }
+
+        .toggle-toolbar-btn {
+            background: rgba(255,255,255,0.3);
+            border: none;
+            color: rgba(0,0,0,0.7);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toggle-toolbar-btn:hover {
+            background: rgba(255,255,255,0.5);
+            transform: scale(1.1);
+        }
+
+        /* Resize handle */
+        .resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 15px;
+            height: 15px;
+            cursor: nw-resize;
+            background: rgba(255,255,255,0.3);
+            border-radius: 0 0 8px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 8px;
+            color: rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .resize-handle.visible {
+            opacity: 1;
+        }
+
+        .resize-handle:hover {
+            background: rgba(255,255,255,0.5);
         }
 
         /* Note content */
@@ -177,6 +268,85 @@
 
         .note-content::placeholder {
             color: rgba(0,0,0,0.5);
+        }
+
+        /* Formatting toolbar */
+        .formatting-toolbar {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 8px;
+            padding: 5px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 5px;
+            flex-wrap: wrap;
+            transition: all 0.3s ease;
+        }
+
+        .formatting-toolbar.minimized {
+            height: 0;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+            opacity: 0;
+        }
+
+        .format-btn {
+            background: rgba(255,255,255,0.3);
+            border: none;
+            color: rgba(0,0,0,0.7);
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .format-btn:hover {
+            background: rgba(255,255,255,0.5);
+            transform: scale(1.05);
+        }
+
+        .format-btn.active {
+            background: rgba(255,255,255,0.7);
+            color: rgba(0,0,0,0.9);
+        }
+
+        /* Checkbox styles */
+        .checkbox-item {
+            display: flex;
+            align-items: flex-start;
+            margin: 2px 0;
+            cursor: pointer;
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 8px;
+            margin-top: 2px;
+            transform: scale(1.2);
+        }
+
+        .checkbox-item.completed {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
+        /* Bullet point styles */
+        .bullet-line {
+            margin: 0;
+            line-height: 1.3;
+        }
+
+        /* Task counter */
+        .task-counter {
+            font-size: 0.7rem;
+            color: rgba(0,0,0,0.6);
+            margin-top: 5px;
+            font-style: italic;
         }
 
         /* Responsive design */
@@ -345,9 +515,21 @@
             noteElement.innerHTML = `
                 <div class="note-header">
                     <span class="note-date">${date}</span>
-                    <button class="delete-btn" onclick="deleteNote(${note.id})">×</button>
+                    <div class="header-buttons">
+                        <button class="toggle-toolbar-btn" title="Show toolbar" onclick="toggleToolbar(${note.id})">⚙</button>
+                        <button class="delete-btn" title="Hold to delete" data-note-id="${note.id}">
+                            <div class="delete-progress"></div>
+                            ×
+                        </button>
+                    </div>
                 </div>
-                <textarea class="note-content" placeholder="Write your note here..." oninput="updateNoteContent(${note.id}, this.value)">${note.content}</textarea>
+                <div class="formatting-toolbar minimized" id="toolbar-${note.id}">
+                    <button class="format-btn" title="Add checkbox" onclick="addCheckbox(${note.id})">☐</button>
+                    <button class="format-btn" title="Add bullet point" onclick="addBulletPoint(${note.id})">•</button>
+                </div>
+                <textarea class="note-content" placeholder="Write your note here..." oninput="updateNoteContent(${note.id}, this.value)" onkeydown="handleKeydown(${note.id}, event)" onclick="handleTextareaClick(${note.id}, event)" ondblclick="handleTextareaDoubleClick(${note.id}, event)">${note.content}</textarea>
+                <div class="task-counter" id="task-counter-${note.id}"></div>
+                <div class="resize-handle">↘</div>
             `;
 
             document.getElementById('notesContainer').appendChild(noteElement);
@@ -359,6 +541,12 @@
 
             // Setup drag functionality
             setupDragListeners(noteElement, note.id);
+            
+            // Setup delete button with hold functionality
+            setupDeleteButton(note.id);
+            
+            // Update task counter
+            updateTaskCounter(note.id);
         }
 
         /**
@@ -369,6 +557,7 @@
             if (note) {
                 note.content = content;
                 saveNotes();
+                updateTaskCounter(id);
             }
         }
 
@@ -506,12 +695,419 @@
             }
         }
 
+        /**
+         * Add checkbox to note
+         */
+        function addCheckbox(noteId) {
+            const textarea = document.querySelector(`#note-${noteId} .note-content`);
+            const cursorPos = textarea.selectionStart;
+            const textBefore = textarea.value.substring(0, cursorPos);
+            const textAfter = textarea.value.substring(cursorPos);
+            
+            // Add checkbox at cursor position
+            const checkboxText = '\n[ ] ';
+            textarea.value = textBefore + checkboxText + textAfter;
+            
+            // Set cursor position after checkbox
+            textarea.selectionStart = textarea.selectionEnd = cursorPos + checkboxText.length;
+            textarea.focus();
+            
+            // Update content and task counter
+            updateNoteContent(noteId, textarea.value);
+            updateTaskCounter(noteId);
+        }
+
+        /**
+         * Add bullet point to note
+         */
+        function addBulletPoint(noteId) {
+            const textarea = document.querySelector(`#note-${noteId} .note-content`);
+            const cursorPos = textarea.selectionStart;
+            const textBefore = textarea.value.substring(0, cursorPos);
+            const textAfter = textarea.value.substring(cursorPos);
+            
+            // Add bullet point at cursor position
+            const bulletText = '\n• ';
+            textarea.value = textBefore + bulletText + textAfter;
+            
+            // Set cursor position after bullet point
+            textarea.selectionStart = textarea.selectionEnd = cursorPos + bulletText.length;
+            textarea.focus();
+            
+            updateNoteContent(noteId, textarea.value);
+        }
+
+        /**
+         * Toggle bullet points mode
+         */
+        function toggleBulletPoints(noteId) {
+            const textarea = document.querySelector(`#note-${noteId} .note-content`);
+            const button = document.querySelector(`#note-${noteId} .format-btn[title="Toggle bullet points"]`);
+            
+            // Toggle the button state
+            if (button.classList.contains('active')) {
+                button.classList.remove('active');
+                button.title = 'Toggle bullet points';
+            } else {
+                button.classList.add('active');
+                button.title = 'Bullet mode active - click to add bullet points';
+            }
+        }
+
+        /**
+         * Update task counter
+         */
+        function updateTaskCounter(noteId) {
+            const textarea = document.querySelector(`#note-${noteId} .note-content`);
+            const content = textarea.value;
+            const taskCounter = document.getElementById(`task-counter-${noteId}`);
+            
+            // Count checkboxes with new format
+            const totalTasks = (content.match(/\[ \]/g) || []).length;
+            const completedTasks = (content.match(/\[x\]/g) || []).length;
+            
+            if (totalTasks > 0) {
+                taskCounter.textContent = `Tasks: ${completedTasks}/${totalTasks} completed`;
+                taskCounter.style.display = 'block';
+            } else {
+                taskCounter.style.display = 'none';
+            }
+        }
+
+        /**
+         * Toggle formatting toolbar visibility
+         */
+        function toggleToolbar(noteId) {
+            const toolbar = document.getElementById(`toolbar-${noteId}`);
+            const toggleBtn = toolbar.previousElementSibling.querySelector('.toggle-toolbar-btn');
+            const noteElement = document.getElementById(`note-${noteId}`);
+            const resizeHandle = noteElement.querySelector('.resize-handle');
+            
+            if (toolbar.classList.contains('minimized')) {
+                // Show toolbar
+                toolbar.classList.remove('minimized');
+                toggleBtn.textContent = '⚙';
+                toggleBtn.title = 'Hide toolbar';
+                
+                // Enable resizing
+                noteElement.classList.add('resizable');
+                resizeHandle.classList.add('visible');
+            } else {
+                // Hide toolbar
+                toolbar.classList.add('minimized');
+                toggleBtn.textContent = '⚙';
+                toggleBtn.title = 'Show toolbar';
+                
+                // Disable resizing
+                noteElement.classList.remove('resizable');
+                resizeHandle.classList.remove('visible');
+            }
+        }
+
+        /**
+         * Setup delete button with hold functionality
+         */
+        function setupDeleteButton(noteId) {
+            const deleteBtn = document.querySelector(`[data-note-id="${noteId}"]`);
+            const progressCircle = deleteBtn.querySelector('.delete-progress');
+            let holdTimer = null;
+            let isHolding = false;
+
+            deleteBtn.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                isHolding = true;
+                deleteBtn.classList.add('holding');
+                progressCircle.classList.add('active');
+                
+                holdTimer = setTimeout(() => {
+                    if (isHolding) {
+                        deleteNote(noteId);
+                    }
+                }, 500);
+            });
+
+            deleteBtn.addEventListener('mouseup', function() {
+                if (holdTimer) {
+                    clearTimeout(holdTimer);
+                    holdTimer = null;
+                }
+                isHolding = false;
+                deleteBtn.classList.remove('holding');
+                progressCircle.classList.remove('active');
+            });
+
+            deleteBtn.addEventListener('mouseleave', function() {
+                if (holdTimer) {
+                    clearTimeout(holdTimer);
+                    holdTimer = null;
+                }
+                isHolding = false;
+                deleteBtn.classList.remove('holding');
+                progressCircle.classList.remove('active');
+            });
+
+            // Touch support
+            deleteBtn.addEventListener('touchstart', function(e) {
+                e.preventDefault();
+                isHolding = true;
+                deleteBtn.classList.add('holding');
+                progressCircle.classList.add('active');
+                
+                holdTimer = setTimeout(() => {
+                    if (isHolding) {
+                        deleteNote(noteId);
+                    }
+                }, 500);
+            });
+
+            deleteBtn.addEventListener('touchend', function() {
+                if (holdTimer) {
+                    clearTimeout(holdTimer);
+                    holdTimer = null;
+                }
+                isHolding = false;
+                deleteBtn.classList.remove('holding');
+                progressCircle.classList.remove('active');
+            });
+        }
+
+        /**
+         * Handle keyboard events in textarea
+         */
+        function handleKeydown(noteId, event) {
+            if (event.key === 'Enter') {
+                const textarea = event.target;
+                const cursorPos = textarea.selectionStart;
+                const content = textarea.value;
+                const lines = content.split('\n');
+                
+                // Find current line
+                let currentLine = 0;
+                let charCount = 0;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    if (charCount + lines[i].length >= cursorPos) {
+                        currentLine = i;
+                        break;
+                    }
+                    charCount += lines[i].length + 1;
+                }
+                
+                const currentLineText = lines[currentLine];
+                
+                // Check if current line starts with checkbox
+                if (currentLineText.trim().startsWith('[ ]') || currentLineText.trim().startsWith('[x]')) {
+                    event.preventDefault();
+                    
+                    // Insert new line with checkbox
+                    const checkboxMatch = currentLineText.match(/^(\[ \]|\[x\])\s*/);
+                    const checkboxPrefix = checkboxMatch ? checkboxMatch[0] : '[ ] ';
+                    
+                    const newContent = content.substring(0, cursorPos) + '\n' + checkboxPrefix + content.substring(cursorPos);
+                    textarea.value = newContent;
+                    
+                    // Set cursor position after checkbox
+                    textarea.selectionStart = textarea.selectionEnd = cursorPos + checkboxPrefix.length + 1;
+                    
+                    updateNoteContent(noteId, newContent);
+                }
+                // Check if current line starts with bullet point
+                else if (currentLineText.trim().startsWith('•')) {
+                    event.preventDefault();
+                    
+                    // Insert new line with bullet point
+                    const bulletPrefix = '• ';
+                    const newContent = content.substring(0, cursorPos) + '\n' + bulletPrefix + content.substring(cursorPos);
+                    textarea.value = newContent;
+                    
+                    // Set cursor position after bullet point
+                    textarea.selectionStart = textarea.selectionEnd = cursorPos + bulletPrefix.length + 1;
+                    
+                    updateNoteContent(noteId, newContent);
+                }
+            }
+        }
+
+        /**
+         * Handle checkbox clicks in textarea
+         */
+        function handleCheckboxClick(noteId, event) {
+            const textarea = document.querySelector(`#note-${noteId} .note-content`);
+            const cursorPos = textarea.selectionStart;
+            const content = textarea.value;
+            
+            // Find the line with the cursor
+            const lines = content.split('\n');
+            let currentLine = 0;
+            let charCount = 0;
+            
+            for (let i = 0; i < lines.length; i++) {
+                if (charCount + lines[i].length >= cursorPos) {
+                    currentLine = i;
+                    break;
+                }
+                charCount += lines[i].length + 1; // +1 for newline
+            }
+            
+            const line = lines[currentLine];
+            if (line.includes('☐') || line.includes('☑')) {
+                // Toggle checkbox
+                const newLine = line.replace('☐', '☑').replace('☑', '☐');
+                lines[currentLine] = newLine;
+                
+                textarea.value = lines.join('\n');
+                updateNoteContent(noteId, textarea.value);
+                updateTaskCounter(noteId);
+            }
+        }
+
+        /**
+         * Handle clicks on checkboxes in textarea
+         */
+        function handleTextareaClick(noteId, event) {
+            const textarea = event.target;
+            const rect = textarea.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Calculate character position from click coordinates
+            const charIndex = getCharIndexFromCoordinates(textarea, x, y);
+            if (charIndex !== -1) {
+                const content = textarea.value;
+                const lines = content.split('\n');
+                let currentLine = 0;
+                let charCount = 0;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    if (charCount + lines[i].length >= charIndex) {
+                        currentLine = i;
+                        break;
+                    }
+                    charCount += lines[i].length + 1;
+                }
+                
+                const line = lines[currentLine];
+                if (line.trim().startsWith('[ ]') || line.trim().startsWith('[x]')) {
+                    // Check if click is on the checkbox area (first 3 characters)
+                    const lineStart = charCount;
+                    const checkboxEnd = lineStart + 3; // Checkbox is 3 characters [ ]
+                    
+                    if (charIndex >= lineStart && charIndex <= checkboxEnd) {
+                        // Toggle checkbox
+                        const newLine = line.replace('[ ]', '[x]').replace('[x]', '[ ]');
+                        lines[currentLine] = newLine;
+                        
+                        textarea.value = lines.join('\n');
+                        updateNoteContent(noteId, textarea.value);
+                        updateTaskCounter(noteId);
+                    }
+                }
+            }
+        }
+
+        /**
+         * Handle double clicks on checkboxes in textarea
+         */
+        function handleTextareaDoubleClick(noteId, event) {
+            const textarea = event.target;
+            const rect = textarea.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+            
+            // Calculate character position from click coordinates
+            const charIndex = getCharIndexFromCoordinates(textarea, x, y);
+            if (charIndex !== -1) {
+                const content = textarea.value;
+                const lines = content.split('\n');
+                let currentLine = 0;
+                let charCount = 0;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    if (charCount + lines[i].length >= charIndex) {
+                        currentLine = i;
+                        break;
+                    }
+                    charCount += lines[i].length + 1;
+                }
+                
+                const line = lines[currentLine];
+                if (line.trim().startsWith('[ ]') || line.trim().startsWith('[x]')) {
+                    // Toggle checkbox on double click anywhere on the line
+                    const newLine = line.replace('[ ]', '[x]').replace('[x]', '[ ]');
+                    lines[currentLine] = newLine;
+                    
+                    textarea.value = lines.join('\n');
+                    updateNoteContent(noteId, textarea.value);
+                    updateTaskCounter(noteId);
+                }
+            }
+        }
+
+        /**
+         * Get character index from click coordinates
+         */
+        function getCharIndexFromCoordinates(textarea, x, y) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            context.font = window.getComputedStyle(textarea).font;
+            
+            const lines = textarea.value.split('\n');
+            const lineHeight = parseInt(window.getComputedStyle(textarea).lineHeight);
+            const clickedLine = Math.floor(y / lineHeight);
+            
+            if (clickedLine >= 0 && clickedLine < lines.length) {
+                const line = lines[clickedLine];
+                let charIndex = 0;
+                
+                for (let i = 0; i < line.length; i++) {
+                    const charWidth = context.measureText(line.substring(0, i + 1)).width;
+                    if (charWidth > x) {
+                        charIndex = i;
+                        break;
+                    }
+                    charIndex = i + 1;
+                }
+                
+                // Add characters from previous lines
+                for (let i = 0; i < clickedLine; i++) {
+                    charIndex += lines[i].length + 1;
+                }
+                
+                return charIndex;
+            }
+            
+            return -1;
+        }
+
         // Keyboard shortcuts
         document.addEventListener('keydown', function(e) {
             // Ctrl/Cmd + N to create new note
             if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
                 e.preventDefault();
                 createNote();
+            }
+            
+            // Check if we're in a textarea
+            if (e.target.classList.contains('note-content')) {
+                const noteId = e.target.closest('.note').id.replace('note-', '');
+                
+                // Ctrl/Cmd + Shift + C for checkbox
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
+                    e.preventDefault();
+                    addCheckbox(noteId);
+                }
+                
+                // Ctrl/Cmd + Shift + B for bullet point
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'B') {
+                    e.preventDefault();
+                    addBulletPoint(noteId);
+                }
+                
+                // Ctrl/Cmd + Shift + T for toggle toolbar
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'T') {
+                    e.preventDefault();
+                    toggleToolbar(noteId);
+                }
             }
         });
     </script>
